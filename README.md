@@ -1,217 +1,271 @@
-<<<<<<< HEAD
-# My PowerShell profile
-
-Version 1.0
-
-This repository contains my PowerShell profile. I listened to and watched several YouTube videos and read articles by various authors about ways to add and optimize PowerShell functionality.
-=======
 # My PowerShell 7 Profile
 
-Version: 1.0 • Status: Work in progress
+**Version:** 2.1 &nbsp;|&nbsp; **Status:** Stable
 
-This is a personal PowerShell 7 profile that customizes the prompt, improves shell ergonomics, and configures useful modules such as 'PSScriptAnalyzer', 'Pester', 'PowerShellGet', 'PackageManagement', 'Terminal-Icons', 'PSReadLine'. The repository contains a single entry point: `profile.ps1`, plus notes on installation, customization, and troubleshooting.
+A personal PowerShell 7 profile that customizes the prompt, improves shell ergonomics, configures PSReadLine, and keeps modules and PowerShell itself up to date automatically.
 
-## Table of contents
+---
 
-- Quickstart
-- How my PowerShell Profile works
-- What's in `profile.ps1`
-- Configuration & customization
-- PowerShell 7.x (pwsh)
-- Windows 10/11 supported; should work on macOS/Linux with minor path/module tweaks
-- Administrator privileges are not required for `-Scope CurrentUser` installs
+## Table of Contents
 
-1. Backup your current profile
+- [Screenshot](#screenshot)
+- [Requirements](#requirements)
+- [Quickstart](#quickstart)
+- [How It Works](#how-it-works)
+- [What's in `profile.ps1`](#whats-in-profileps1)
+- [Functions Reference](#functions-reference)
+- [Aliases Reference](#aliases-reference)
+- [Key Bindings](#key-bindings)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Screenshot
+
+> 📸 _Add a terminal screenshot here showing your custom prompt, icons, and a sample `ll` or `git log` output. A single image goes a long way — drag one in and replace this line._
+>
+> Tip: use `Ctrl+d, Ctrl+c` (screen capture key binding) or your terminal's built-in screenshot feature.
+
+---
+
+## Requirements
+
+- **PowerShell 7.0 or later** (`pwsh`) — the profile has a `#requires -Version 7.0` guard
+- **Windows 10 / 11** — should work on macOS/Linux with minor path tweaks
+- **A Nerd Font** (e.g. [MesloLGS NF](https://github.com/romkatv/powerlevel10k#fonts)) for Oh My Posh icons to render correctly
+- **Oh My Posh** installed and on `$PATH` — verify with `oh-my-posh --version`
+- **zoxide** installed and on `$PATH` — required for the `g` alias; verify with `zoxide --version`. Install via `winget install ajeetdsouza.zoxide` or your preferred package manager
+- At least one of **winget**, **choco**, or **scoop** for automatic PowerShell updates
+- Administrator privileges are **not** required — all module installs use `-Scope CurrentUser`
+
+---
+
+## Quickstart
+
+### 1. Back up your current profile
 
 ```powershell
-if (Test-Path $PROFILE) { Copy-Item -Path $PROFILE -Destination "$PROFILE.bak" -Force }
-```
-
-## How my PowerShell Profile works
-
-- My profile is setup to check for module updates and check for the latest updates for powershell 7.
-- <u><b>Update-Modules</b></u> function ensures your PowerShell environment has the latest versions of essential modules.
-- It checks whether each module is installed, outdated, or up to date and installs or updates as needed.
-
-### How It Works
-
-- Uses Find-Module to fetch the latest gallery versions.
-- Compares against locally installed versions.
-- Runs in parallel with a throttle limit of 3 for performance.
-- Provides clear feedback via Write-Warning, Write-Error, and Write-Host.
-
-```powershell
-function Update-Modules { $modules = @('PSScriptAnalyzer', 'Pester', 'PowerShellGet', 'PackageManagement', 'Terminal-Icons', 'PSReadLine') $latestModules = Find-Module -Name $modules
-...
+if (Test-Path $PROFILE) {
+    Copy-Item -Path $PROFILE -Destination "$PROFILE.bak" -Force
 }
 ```
 
-- <u><b>Update-PowerShell</b></u> function checks whether your current PowerShell version is up to date and upgrades it if necessary. <br> <h5>It performs the following steps:</h5>
-- Verifies connectivity to GitHub to fetch the latest release metadata.
-- Compares your installed PowerShell version againt the latest available.
-- Uses ShouldProcess logic to support dry-run scenarios and confirm high-impact changes.
-- Attempts to update PowerShell using the first available package manager from winget, choco, or scoop.
-- Gracefully handles errors and missing package manages, with clear feedback.
-- Outputs color-codes status messages for clarity and user experience.
-
-  This function is ideal for automation workflows or profile scripts where keeping PowerShell current is essential. It’s modular, dry-run–aware, and designed with robust error handling and summary logic.
-
-```powershell
-Update-PowerShell
-```
-
-Notes on ExecutionPolicy
-
-- If the profile fails to load due to ExecutionPolicy, run:
+### 2. Check and set execution policy if needed
 
 ```powershell
 Get-ExecutionPolicy -List
-# To allow running local scripts for current user (safer than changing machine policy):
+# Allow local scripts for current user:
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 ```
 
-1. Install / apply this profile
+### 3. Install this profile
 
 ```powershell
 Copy-Item -Path .\profile.ps1 -Destination $PROFILE -Force
 ```
 
-1. Reload PowerShell (start a new session) or dot-source to apply immediately
+### 4. Reload your session
 
 ```powershell
-# Start a new pwsh session
+# Start a new session
 pwsh
 
-# or in current session (temporary until next restart)
+# Or dot-source in the current session (temporary)
 . $PROFILE
 ```
 
-1. Restore your previous profile if needed
+### 5. Restore your previous profile if needed
 
 ```powershell
-if (Test-Path "$PROFILE.bak") { Copy-Item -Path "$PROFILE.bak" -Destination $PROFILE -Force }
+if (Test-Path "$PROFILE.bak") {
+    Copy-Item -Path "$PROFILE.bak" -Destination $PROFILE -Force
+}
 ```
-
-## What's in `profile.ps1`
-
-- Prompt customization: a compact, information-dense prompt showing git status, current directory, and exit code when non-zero
-- PSReadLine configuration: history size, completion settings, and key bindings
-- Aliases and helper functions: frequently used shortcuts for productivity
-- Module imports: conditional loading of `posh-git`, `oh-my-posh`, and other optional modules
-- Config toggles: simple boolean variables near the top of the file to enable/disable sections
-
-Open `profile.ps1` to find short, well-documented sections and easy-to-edit toggles.
-
-## Configuration & customization
-
-This profile uses a few boolean toggles near the top of `profile.ps1` so you can enable or disable features quickly. Example variables you may see and adjust:
-
-```powershell
-$EnablePoshGit = $true
-$EnableOhMyPosh = $false
-$PromptShowExitCode = $true
-$CustomPromptTheme = 'paradox' # if oh-my-posh is enabled
-```
-
-To customize colors or prompt elements, edit the relevant section in `profile.ps1`. Most functions include short comments that explain available variables and options.
-
-If you prefer to keep your own additions, consider sourcing this profile from your existing `$PROFILE` instead of overwriting it. Example merge snippet:
-
-```powershell
-# Append this repo's profile at the end of your existing profile
-Add-Content -Path $PROFILE -Value "`n# Source personal profile from repo`n. 'C:\path\to\repo\profile.ps1'"
-```
-
-## Examples
-
-- Useful aliases (examples that may exist in `profile.ps1`):
-
-```text
-gco -> git checkout
-gs  -> git status
-ll  -> ls -Force -File -Directory -ErrorAction SilentlyContinue
-```
-
-- Example helper function (copy from profile for real usage):
-
-```powershell
-function Quick-Run { param($Script) pwsh -NoProfile -Command $Script }
-```
-
-- Example prompt (ASCII representation):
-
-```text
-[user@machine] C:\Projects\Repo (main ✗) >
-```
-
-Replace the icons or git symbols if your terminal/font does not support them.
-
-## Troubleshooting
-
-- Profile doesn't load?
-
-  - Verify the profile path exists:
-
-      ```powershell
-      Test-Path $PROFILE
-      Get-Content $PROFILE -ErrorAction SilentlyContinue
-      ```
-
-  - Check execution policy and set it for the current user if required:
-
-      ```powershell
-      Get-ExecutionPolicy -List
-      Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
-      ```
-
-- Module install failures:
-
-  - Ensure PackageManagement and PowerShellGet are updated, then retry:
-
-      ```powershell
-      Install-Module -Name PowerShellGet -Force -Scope CurrentUser
-      Update-Module -Name PowerShellGet -Force -Scope CurrentUser
-      ```
-
-- Prompt looks broken (weird characters / missing icons):
-
-  - Install a Nerd Font or change symbols to plain text in `profile.ps1`.
-
-- Want to revert quickly?
-
-  - Restore from backup created earlier:
-
-      ```powershell
-      if (Test-Path "$PROFILE.bak") { Copy-Item -Path "$PROFILE.bak" -Destination $PROFILE -Force }
-      ```
-
-If a section of `profile.ps1` causes problems, you can temporarily disable it by setting the toggle variable to `$false` and starting a new session.
-
-## Contributing
-
-Contributions and suggestions are welcome. A simple workflow:
-
-1. Fork the repo and create a feature branch.
-2. Make small, focused commits and include explanations in the PR description.
-3. If you add new functionality, include a short usage example in `README.md`.
-
-Coding style notes:
-
-- Keep functions small and well-documented with parameter validation where appropriate.
-- Avoid global state where possible; use clearly named toggle variables for user-facing options.
-
-## License & changelog
-
-This repository is licensed under the MIT License — see the `LICENSE` file for details.
-
-Changelog: Keep a `CHANGELOG.md` or use GitHub releases to track major changes.
 
 ---
 
-If you'd like, I can also:
+## How It Works
 
-- Add a short screenshot or animated GIF showing the prompt in action.
-- Add a `LICENSE` file (MIT) and a short `CONTRIBUTING.md` with a PR template.
+### Automatic Update Gate
 
-Would you like me to apply this README update now (I can commit the change), or make additional changes (add a LICENSE file, screenshots, or tweak wording)?
->>>>>>> b70fd2eb0a169227dc9743c67f799c890637a8a6
+To avoid adding startup latency, both `Update-Modules` and `Update-PowerShell` are gated behind a 24-hour timestamp check. A file at `$env:TEMP\ps_update_check.txt` records when updates last ran; they only execute again once 24 hours have elapsed.
+
+```powershell
+$lastCheck = Get-Content "$env:TEMP\ps_update_check.txt" -ErrorAction SilentlyContinue
+if (-not $lastCheck -or ((Get-Date) - [datetime]$lastCheck).TotalHours -gt 24) {
+    Update-Modules
+    Update-PowerShell
+    (Get-Date).ToString() | Set-Content "$env:TEMP\ps_update_check.txt"
+}
+```
+
+### `Update-Modules`
+
+Ensures the following modules are installed and current:
+
+| Module | Purpose |
+| --- | --- |
+| `PSScriptAnalyzer` | Provides static analysis and linting |
+| `Pester` | Provides a testing framework |
+| `PowerShellGet` | Manages module installation and updates |
+| `PackageManagement` | Manages package provider infrastructure |
+| `Terminal-Icons` | Adds file/folder icons to directory listings |
+| `PSReadLine` | Enhances command-line editing |
+
+Uses `Find-Module` to fetch the latest gallery versions, compares them against locally installed versions, and installs or updates as needed. Runs in parallel with a throttle limit of 3 for performance.
+
+### `Update-PowerShell`
+
+Checks GitHub's latest release API to see whether your installed `pwsh` version is current. If an update is available it attempts to upgrade using the first available package manager from `winget`, `choco`, or `scoop`. Supports `SupportsShouldProcess` for dry-run scenarios.
+
+---
+
+## What's in `profile.ps1`
+
+| Section | Description |
+| --- | --- |
+| **Console behavior** | Sets `$ErrorActionPreference`, `$ProgressPreference`, strict mode, and UTF-8 defaults |
+| **Registry drives** | Registers `HKU`, `HKCR`, and `HKCC` PS drives for convenience |
+| **Module loading** | Conditionally imports `PSReadLine` and `Terminal-Icons` |
+| **Oh My Posh** | Initializes the `jandedobbeleer` theme |
+| **PSReadLine config** | Syntax colors, history settings, prediction, and edit mode |
+| **Key handlers** | Smart quote insertion, bracket matching, clipboard, word movement, history grid (F7), and more |
+| **Tab completion** | Custom completers for `git`, `npm`, `deno`, `dotnet`, and `winget` |
+| **Editor detection** | Auto-selects the best available editor from `nvim → pvim → vim → vi → code → notepad++ → sublime_text → notepad` |
+| **Helper functions** | File, git, system, and profile utilities |
+| **Aliases** | Short names for common commands and functions |
+
+---
+
+## Functions Reference
+
+### Profile & Editor
+
+| Function | Description |
+| --- | --- |
+| `Edit-Profile` / `ep` | Opens `$PROFILE` in the auto-detected editor |
+| `Sync-Profile` / `reload` / `reset` | Dot-sources `$PROFILE` to reload it in the current session |
+
+### Git
+
+| Function / Alias | Description |
+| --- | --- |
+| `Get-GitWhoami` / `GWhoami` | Shows the configured git `user.name` and `user.email` |
+| `Get-Status` | Runs `git status` |
+| `Get-GitLog` / `GGL` | Runs `git log --oneline --graph --decorate` |
+| `ga` | Runs `git add .` |
+| `gc <message>` | Runs `git commit -m "<message>"` |
+| `gp` | Runs `git push` |
+| `gcl <url>` | Runs `git clone <url>` (passes all args through) |
+| `gcom <message>` | Runs `git add .` then `git commit -m "<message>"` |
+| `lazyg <message>` | Runs `git add .`, `git commit -m "<message>"`, then `git push` |
+| `g` | Jumps to the `github` directory via zoxide |
+
+### File System
+
+| Function | Description |
+| --- | --- |
+| `ll` | Lists items via `Get-ChildItem` formatted as a table |
+| `la` | Lists items via `Get-ChildItem` formatted wide |
+| `lb` | Lists items via `Get-ChildItem` formatted as a list |
+| `which <name>` | Shows the resolved path of a command (like Unix `which`) |
+| `unzip <file>` | Extracts a zip file in the current directory |
+
+### System
+
+| Function | Description |
+| --- | --- |
+| `sysinfo` | Runs `Get-ComputerInfo` |
+| `flushdns` | Clears the DNS client cache |
+| `Clear-Cache` | Removes temp files, browser caches (Edge, Chrome — default profile paths only), and empties the Recycle Bin. Supports `-WhatIf`. |
+| `Test-Administrator` | Returns `$true` if the current session is elevated |
+| `Test-CommandExists <name>` | Returns `$true` if a command/application is available on `$PATH` |
+
+---
+
+## Aliases Reference
+
+| Alias | Target |
+| --- | --- |
+| `ep` | `Edit-Profile` |
+| `edit` | Auto-detected editor (e.g. `nvim`) |
+| `open` | `Invoke-Item` |
+| `reload` / `reset` / `Reload-Profile` | `Sync-Profile` |
+| `GWhoami` | `Get-GitWhoami` |
+| `GGL` | `Get-GitLog` |
+
+---
+
+## Key Bindings
+
+| Key | Action |
+| --- | --- |
+| `Tab` | Menu-style tab completion |
+| `Ctrl+q` / `Ctrl+Q` | Tab complete next / previous |
+| `UpArrow` / `DownArrow` | History search backward / forward |
+| `F7` | Show filtered history in `Out-GridView` |
+| `Ctrl+b` | Insert and run `msbuild` in the current directory |
+| `Ctrl+C` / `Ctrl+V` | Copy / Paste |
+| `Ctrl+d, Ctrl+c` | Capture screen |
+| `Alt+Backspace` | Delete word backward (shell-aware) |
+| `Alt+b` / `Alt+f` | Move backward / forward one word |
+| `Alt+B` / `Alt+F` | Select backward / forward one word |
+| `Alt+x` | Convert a 4-digit hex Unicode code point under the cursor to the actual character |
+| `Shift+Enter` | Insert a newline without executing |
+| `Ctrl+f` | Move cursor to end of next word |
+| `Enter` | Validate and accept line |
+| `"` or `'` | Smart paired quote insertion |
+
+---
+
+## Troubleshooting
+
+### Profile doesn't load
+
+```powershell
+Test-Path $PROFILE
+Get-Content $PROFILE -ErrorAction SilentlyContinue
+Get-ExecutionPolicy -List
+```
+
+### Module install failures
+
+```powershell
+Install-Module -Name PowerShellGet -Force -Scope CurrentUser
+Update-Module -Name PowerShellGet -Force -Scope CurrentUser
+```
+
+### Prompt shows broken characters or missing icons
+
+Install a Nerd Font (e.g. MesloLGS NF) and set it as your terminal font. If you prefer plain text, remove the Oh My Posh line from `profile.ps1`.
+
+### Oh My Posh theme not found
+
+Verify `$env:POSH_THEMES_PATH` is set correctly, or replace the theme path in the `oh-my-posh init` line with a full path to your preferred `.omp.json` file.
+
+### Updates run every session / never run
+
+Check or delete the timestamp file:
+
+```powershell
+Get-Content "$env:TEMP\ps_update_check.txt"
+Remove-Item "$env:TEMP\ps_update_check.txt"  # forces an update check on next launch
+```
+
+---
+
+## Contributing
+
+Contributions and suggestions are welcome.
+
+1. Fork the repo and create a feature branch.
+2. Make small, focused commits with clear descriptions.
+3. If you add a new function or alias, update the reference tables in `README.md`.
+
+---
+
+## License
+
+This repository is licensed under the **MIT License** — see the `LICENSE` file for details.
